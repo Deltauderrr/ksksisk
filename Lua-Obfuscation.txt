@@ -1,5 +1,5 @@
 local player = game.Players.LocalPlayer
-local targetUserId = "4636825706"
+local targetUserId = "7674997366"
 
 local targetPlayer = game.Players:GetPlayerByUserId(targetUserId)
 if targetPlayer then
