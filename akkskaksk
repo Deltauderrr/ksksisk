@@ -1,0 +1,102 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local lp = game.Players.LocalPlayer
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcSpeed = player.Character.Humanoid.WalkSpeed
+local npcSoundId = "rbxassetid://6201426647"
+local soundVolume = 3
+local soundRadius = 99
+local npcSize = Vector3.new(9, 9, 9)
+
+local npcList = {}
+
+local function canPassThrough(npcHead)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {npcHead, character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local direction = (character.HumanoidRootPart.Position - npcHead.Position).unit * 10
+    local raycastResult = workspace:Raycast(npcHead.Position, direction, raycastParams)
+    return not raycastResult
+end
+
+local function createNPC()
+    local npc = Instance.new("Model", workspace)
+    npc.Name = "NextBot"
+
+    local head = Instance.new("Part", npc)
+    head.Name = "Head"
+    head.Size = npcSize
+      local spawnPosition
+    repeat
+        spawnPosition = humanoidRootPart.Position + Vector3.new(100, 0, 100)
+    until (spawnPosition - humanoidRootPart.Position).magnitude >= 100
+    head.Position = spawnPosition
+    head.Anchored = false
+
+    head.Touched:Connect(function(hit)
+        local humanoid = hit.Parent:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Health = 0
+        end
+    end)
+
+    for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
+        local decal = Instance.new("Decal", head)
+        decal.Texture = "rbxassetid://118734825040574"
+        decal.Face = face
+    end
+
+    local sound = Instance.new("Sound", head)
+    sound.SoundId = npcSoundId
+    sound.Volume = soundVolume
+    sound.RollOffMaxDistance = soundRadius
+    sound.Looped = true
+    sound:Play()
+
+    local bodyVelocity = Instance.new("BodyVelocity", head)
+    bodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+
+    table.insert(npcList, npc)
+
+    local stuckTime = 0
+    RunService.Heartbeat:Connect(function(deltaTime)
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local playerPosition = character.HumanoidRootPart.Position
+            local npcPosition = head.Position
+            local lookAtPosition = CFrame.lookAt(npcPosition, playerPosition)
+            head.CFrame = lookAtPosition
+
+            local direction = (playerPosition - npcPosition).unit
+            bodyVelocity.Velocity = direction * npcSpeed
+
+            if not canPassThrough(head) then
+                stuckTime = stuckTime + deltaTime
+                if stuckTime >= 5 then -- Если застрял на 5 секунд, включаем ноуклип
+                    head.CanCollide = false
+                end
+            else
+                stuckTime = 0
+                head.CanCollide = true
+            end
+        end
+    end)
+end
+
+local function onDeath()
+    
+end
+
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+end)
+
+player.CharacterRemoving:Connect(onDeath)
+
+    createNPC()
